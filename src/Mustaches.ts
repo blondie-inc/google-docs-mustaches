@@ -1,4 +1,5 @@
 import { ID, ConstructorOptions, InterpolationOptions, MimeType } from './types'
+import DocumentNotFound from './errors/DocumentNotFound';
 import interpolate from './interpolation'
 import { GDoc, Request } from './interpolation/types'
 import apis, { multipart } from './apis'
@@ -27,6 +28,10 @@ class Mustaches {
 
     // Copy template to destination
     const copiedFile: ID = await this.copyFile(source, destination, copyOptions)
+
+    if (!copiedFile) {
+      throw new DocumentNotFound();
+    }
 
     // Compute interpolations
     const doc = await this.readDoc(copiedFile)
