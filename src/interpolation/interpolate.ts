@@ -68,7 +68,7 @@ const computeUpdates = async (placeholders: string[], data: any, formatters: For
       }
     }
 
-      return [placeholder, `${computed}`];
+      return [placeholder, `${computed ? computed : ''}`];
     }
   ));
 
