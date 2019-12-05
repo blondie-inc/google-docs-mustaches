@@ -76,7 +76,7 @@ const computeRequestForInsertTableRows = (
 ): Request[] => {
   const requests: Request[] = [];
 
-  SPlaceholders.forEach((placeholder: SPlaceholderInfo) => {
+  SPlaceholders.reverse().forEach((placeholder: SPlaceholderInfo) => {
     if (placeholder.endRow === -1) return;
     
     const itemsLength = data[placeholder.placeholder].length || 0;
