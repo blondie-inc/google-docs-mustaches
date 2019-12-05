@@ -38,7 +38,7 @@ const findSpecialPlaceholders = (doc: GDoc): SPlaceholderInfo[] => {
             end_matches.forEach((m: any) => {
               const placeholder = m.slice(3, -2);
               specialplaceholders.forEach(sp => {
-                if (sp.placeholder === placeholder) {
+                if (sp.endRow === -1 && sp.placeholder === placeholder) {
                   sp.endRow = index;
                 }
               });
@@ -78,7 +78,7 @@ const computeRequestForInsertTableRows = (
 
   SPlaceholders.reverse().forEach((placeholder: SPlaceholderInfo) => {
     if (placeholder.endRow === -1) return;
-    
+
     const itemsLength = data[placeholder.placeholder].length || 0;
 
     //Make requests to insert new empty table rows for repeatation.

@@ -40,7 +40,7 @@ const getSpecialPlaceholderInfo = (doc: GDoc): any[] => {
             end_matches.forEach((m: any) => {
               const placeholder = m.slice(3, -2);
               SPlaceholderInfos.forEach(sp => {
-                if (sp.placeholder === placeholder) {
+                if (sp.endRowIndex === -1 && sp.placeholder === placeholder) {
                   sp.endRowIndex = index;
                 }
               });
