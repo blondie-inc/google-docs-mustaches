@@ -86,12 +86,22 @@ const computeQueries = (SPlaceholderInfos: any, data: any): Request[] => {
           if (e.textRun) {
             let text = e.textRun.content;
             const textStyle = e.textRun.textStyle;
-            if (text.includes("{{" + currentPlaceholder + ".")) {
-              text = text.replace(
-                "{{" + currentPlaceholder + ".",
-                "{{" + currentPlaceholder + "[" + repeatCounter + "]."
-              );
-            }
+
+            const matches = e.textRun.content.match(/{{([^}]*)}}/gi) || [];
+            matches.forEach((m: any) => {
+              const subPlaceHolder = m.slice(2, -2);
+              if (
+                data[currentPlaceholder] &&
+                data[currentPlaceholder][0] &&
+                data[currentPlaceholder][0][subPlaceHolder]
+              ) {
+                text = text.replace(
+                  `{{${subPlaceHolder}}}`,
+                  `{{${currentPlaceholder}[${repeatCounter}].${subPlaceHolder}}}`
+                );
+              }
+            });
+
             requests.push({
               insertText: {
                 text,
@@ -148,7 +158,7 @@ const computeQueries = (SPlaceholderInfos: any, data: any): Request[] => {
     } = pInfo;
 
     if (endRowIndex === -1) return;
-    
+
     currentPlaceholder = placeholder;
     const repeatAmount = data[currentPlaceholder].length;
     const srcLength = endRowIndex - startRowIndex + 1;
