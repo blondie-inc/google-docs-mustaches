@@ -3,9 +3,13 @@ import { Formatters } from "../types";
 
 import dot from "./dot";
 
-const interpolate = async (doc: GDoc, data: any, formatters: Formatters, resolver?: Function): Promise<Request[]> => {
+const interpolate = async (
+  doc: GDoc,
+  data: any,
+  formatters: Formatters,
+  resolver?: Function
+): Promise<Request[]> => {
   const placeholders = findPlaceholders(doc);
-
   return computeUpdates(placeholders, data, formatters, resolver);
 };
 
@@ -51,36 +55,48 @@ const availableFormatters: Formatters = {
   uppercase: (s: string) => s.toUpperCase()
 };
 
-const computeUpdates = async (placeholders: string[], data: any, formatters: Formatters, resolver?: Function): Promise<Request[]> => {
+const computeUpdates = async (
+  placeholders: string[],
+  data: any,
+  formatters: Formatters,
+  resolver?: Function
+): Promise<Request[]> => {
   formatters = { ...availableFormatters, ...formatters };
 
-  const replacements = await Promise.all(placeholders.map(async (placeholder): Promise<[string, string]> => {
-    let computed: any;
+  const replacements = await Promise.all(
+    placeholders.map(
+      async (placeholder): Promise<[string, string]> => {
+        let computed: any;
 
-    try {
-      computed = dot(data, placeholder, {formatters});
-      if (!computed && resolver) {
-        computed = await resolver(placeholder);
-      }
-    } catch (e) {
-      if (resolver) {
-        computed = await resolver(placeholder);
-      }
-    }
+        try {
+          computed = dot(data, placeholder, { formatters });
+          if (!computed && resolver) {
+            computed = await resolver(placeholder);
+          }
+        } catch (e) {
+          if (resolver) {
+            computed = await resolver(placeholder);
+          }
+        }
 
-      return [placeholder, `${computed ? computed : ''}`];
-    }
-  ));
-
-  return replacements.map(([placeholder, computed]) => ({
-    replaceAllText: {
-      replaceText: computed,
-      containsText: {
-        text: `{{${placeholder}}}`,
-        matchCase: false
+        return [placeholder, `${computed ? computed : ""}`];
       }
-    }
-  }));
+    )
+  );
+
+  return replacements.map(([placeholder, computed]) => {
+    const result = {
+      replaceAllText: {
+        replaceText: computed,
+        containsText: {
+          text: `{{${placeholder}}}`,
+          matchCase: false
+        }
+      }
+    };
+
+    return result;
+  });
 };
 
 export default interpolate;

@@ -1,6 +1,6 @@
 import { ID, ConstructorOptions, InterpolationOptions, MimeType } from './types'
 import DocumentNotFound from './errors/DocumentNotFound';
-import interpolate from './interpolation'
+import { interpolate, insertTableRowsQuery, updateTableRowsQuery } from './interpolation'
 import { GDoc, Request } from './interpolation/types'
 import apis, { multipart } from './apis'
 import Blob from './polyfills/Blob'
@@ -33,12 +33,22 @@ class Mustaches {
       throw new DocumentNotFound();
     }
 
+    // Insert table rows for repeating
+    let doc = await this.readDoc(copiedFile)
+    const {requests: requestsToInsert} = insertTableRowsQuery(doc, data);
+    await this.updateDoc(copiedFile, requestsToInsert);
+
+    // Update values to table rows for repeating
+    doc = await this.readDoc(copiedFile)
+    const requeststoUpdateValues = await updateTableRowsQuery(doc, data);
+    await this.updateDoc(copiedFile, requeststoUpdateValues);
+
     // Compute interpolations
-    const doc = await this.readDoc(copiedFile)
+    doc = await this.readDoc(copiedFile)
     const updates = await interpolate(doc, data, formatters, resolver)
 
     // Update copy with interpolations
-    await this.updateDoc(copiedFile, updates)
+    await this.updateDoc(copiedFile, updates);
 
     if (exportType) {
       // Export
@@ -47,6 +57,7 @@ class Mustaches {
       // Upload to destination
       return this.upload(name || 'Export', destination, exportType, exported)
     }
+
 
     return copiedFile
   }
