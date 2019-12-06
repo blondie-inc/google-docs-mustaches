@@ -1,9 +1,6 @@
 import { GDoc, Request } from "./types";
 
-const updateTableRowsQuery = async (
-  doc: GDoc,
-  data: any
-): Promise<Request[]> => {
+const updateTableRowsQuery = (doc: GDoc, data: any): Request[] => {
   const placeholders = getSpecialPlaceholderInfo(doc);
 
   const requests = computeQueries(placeholders, data);
@@ -77,7 +74,7 @@ const computeQueries = (SPlaceholderInfos: any, data: any): Request[] => {
   let currentPlaceholder: string = "";
   let repeatCounter: number = 0;
 
-  //copy cell with same style and changing {{items.xxx}} => {{items[index].xxx}}
+  //copy cell with same style and changing {{xxx}} => {{items[index].xxx}}
   const processCell = (srcContent: any[], dstContent: any[]) => {
     srcContent.map((c, index) => {
       if (c.paragraph) {
