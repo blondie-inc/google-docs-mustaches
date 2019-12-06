@@ -94,7 +94,7 @@ const computeQueries = (SPlaceholderInfos: any, data: any): Request[] => {
               ) {
                 text = text.replace(
                   `{{${subPlaceHolder}}}`,
-                  `{{${currentPlaceholder}[${repeatCounter}].${subPlaceHolder}}}`
+                  `{{${currentPlaceholder}.${repeatCounter}.${subPlaceHolder}}}`
                 );
               }
             });
