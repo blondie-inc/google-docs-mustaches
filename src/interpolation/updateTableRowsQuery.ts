@@ -156,8 +156,10 @@ const computeQueries = (SPlaceholderInfos: any, data: any): Request[] => {
 
     if (endRowIndex === -1) return;
 
+    if (!data[placeholder]) return;
+
     currentPlaceholder = placeholder;
-    const repeatAmount = data[currentPlaceholder].length;
+    const repeatAmount = data[currentPlaceholder].length || 0;
     const srcLength = endRowIndex - startRowIndex + 1;
     for (var i = repeatAmount; i > 0; i--) {
       repeatCounter = i - 1;

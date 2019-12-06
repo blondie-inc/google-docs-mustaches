@@ -1,4 +1,4 @@
-import { ID, ConstructorOptions, InterpolationOptions } from './types';
+import { ID, ConstructorOptions, InterpolationOptions } from "./types";
 declare class Mustaches {
     apis: any;
     constructor(options: ConstructorOptions);

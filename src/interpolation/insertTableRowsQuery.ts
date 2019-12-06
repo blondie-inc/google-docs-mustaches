@@ -79,6 +79,8 @@ const computeRequestForInsertTableRows = (
   SPlaceholders.reverse().forEach((placeholder: SPlaceholderInfo) => {
     if (placeholder.endRow === -1) return;
 
+    if (!data[placeholder.placeholder]) return;
+
     const itemsLength = data[placeholder.placeholder].length || 0;
 
     //Make requests to insert new empty table rows for repeatation.
