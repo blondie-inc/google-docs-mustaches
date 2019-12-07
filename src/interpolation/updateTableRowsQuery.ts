@@ -93,13 +93,27 @@ const computeQueries = (
             const textStyle = e.textRun.textStyle;
 
             const matches = e.textRun.content.match(/{{([^}]*)}}/gi) || [];
-            matches.forEach((m: any) => {
+            matches.forEach(async (m: any) => {
               const subPlaceHolder = m.slice(2, -2);
+              let renderAble: boolean = false;
               if (
                 data[currentPlaceholder] &&
                 data[currentPlaceholder][0] &&
                 data[currentPlaceholder][0][subPlaceHolder]
               ) {
+                renderAble = true;
+              } else if (resolver) {
+                const dataByResolver = await resolver(currentPlaceholder);
+                if (
+                  dataByResolver &&
+                  dataByResolver[0] &&
+                  dataByResolver[0][subPlaceHolder]
+                ) {
+                  renderAble = true;
+                }
+              }
+
+              if (renderAble) {
                 text = text.replace(
                   `{{${subPlaceHolder}}}`,
                   `{{${currentPlaceholder}.${repeatCounter}.${subPlaceHolder}}}`
