@@ -1,9 +1,13 @@
 import { GDoc, Request } from "./types";
 
-const updateTableRowsQuery = (doc: GDoc, data: any): Request[] => {
+const updateTableRowsQuery = (
+  doc: GDoc,
+  data: any,
+  resolver?: Function
+): Request[] => {
   const placeholders = getSpecialPlaceholderInfo(doc);
 
-  const requests = computeQueries(placeholders, data);
+  const requests = computeQueries(placeholders, data, resolver);
 
   return requests;
 };
@@ -69,7 +73,11 @@ const getSpecialPlaceholderInfo = (doc: GDoc): any[] => {
   return SPlaceholderInfos;
 };
 
-const computeQueries = (SPlaceholderInfos: any, data: any): Request[] => {
+const computeQueries = (
+  SPlaceholderInfos: any,
+  data: any,
+  resolver?: Function
+): Request[] => {
   const requests: Request[] = [];
   let currentPlaceholder: string = "";
   let repeatCounter: number = 0;
@@ -146,7 +154,7 @@ const computeQueries = (SPlaceholderInfos: any, data: any): Request[] => {
     });
   };
 
-  SPlaceholderInfos.reverse().forEach((pInfo: any) => {
+  SPlaceholderInfos.reverse().forEach(async (pInfo: any) => {
     const {
       table: { tableRows },
       startRowIndex,
@@ -156,10 +164,16 @@ const computeQueries = (SPlaceholderInfos: any, data: any): Request[] => {
 
     if (endRowIndex === -1) return;
 
-    if (!data[placeholder]) return;
+    let sectionData = data[placeholder];
+    if (!sectionData && resolver) {
+      sectionData = await resolver(placeholder);
+    }
+
+    if (!sectionData || sectionData.length <= 0) return;
 
     currentPlaceholder = placeholder;
-    const repeatAmount = data[currentPlaceholder].length || 0;
+
+    const repeatAmount = sectionData.length;
     const srcLength = endRowIndex - startRowIndex + 1;
     for (var i = repeatAmount; i > 0; i--) {
       repeatCounter = i - 1;

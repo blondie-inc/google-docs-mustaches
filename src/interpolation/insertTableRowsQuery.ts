@@ -2,10 +2,11 @@ import { GDoc, Request, SPlaceholderInfo } from "./types";
 
 const insertTableRowsQuery = (
   doc: GDoc,
-  data: any
+  data: any,
+  resolver?: Function
 ): { requests: Request[]; specialPlaceholders: SPlaceholderInfo[] } => {
   const specialPlaceholders = findSpecialPlaceholders(doc);
-  const requests = computeRequestForInsertTableRows(specialPlaceholders, data);
+  const requests = computeRequestForInsertTableRows(specialPlaceholders, data, resolver);
   return { requests, specialPlaceholders };
 };
 
@@ -72,16 +73,22 @@ const findSpecialPlaceholders = (doc: GDoc): SPlaceholderInfo[] => {
 
 const computeRequestForInsertTableRows = (
   SPlaceholders: SPlaceholderInfo[],
-  data: any
+  data: any,
+  resolver?: Function
 ): Request[] => {
   const requests: Request[] = [];
 
-  SPlaceholders.reverse().forEach((placeholder: SPlaceholderInfo) => {
+  SPlaceholders.reverse().forEach(async (placeholder: SPlaceholderInfo) => {
     if (placeholder.endRow === -1) return;
 
-    if (!data[placeholder.placeholder]) return;
+    let sectionData = data[placeholder.placeholder];
+    if (!sectionData && resolver) {
+      sectionData = await resolver(placeholder.placeholder);
+    }
 
-    const itemsLength = data[placeholder.placeholder].length || 0;
+    if(!sectionData || sectionData.length <= 0) return;
+
+    const itemsLength = sectionData.length;
 
     //Make requests to insert new empty table rows for repeatation.
     for (var i = 0; i < itemsLength; i++) {

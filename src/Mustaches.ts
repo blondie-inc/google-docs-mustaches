@@ -48,13 +48,17 @@ class Mustaches {
 
     // Insert table rows for repeating
     let doc = await this.readDoc(copiedFile);
-    const { requests: requestsToInsert } = insertTableRowsQuery(doc, data);
+    const { requests: requestsToInsert } = insertTableRowsQuery(
+      doc,
+      data,
+      resolver
+    );
     if (requestsToInsert.length)
       await this.updateDoc(copiedFile, requestsToInsert);
 
     // Update values to table rows for repeating
     doc = await this.readDoc(copiedFile);
-    const requeststoUpdateValues = updateTableRowsQuery(doc, data);
+    const requeststoUpdateValues = updateTableRowsQuery(doc, data, resolver);
     if (requeststoUpdateValues.length)
       await this.updateDoc(copiedFile, requeststoUpdateValues);
 
