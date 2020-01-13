@@ -48,24 +48,27 @@ class Mustaches {
 
     // Insert table rows for repeating
     let doc = await this.readDoc(copiedFile);
-    const { requests: requestsToInsert } = insertTableRowsQuery(
-      doc,
-      data,
-      resolver
-    );
+    const requestsToInsert = await insertTableRowsQuery(doc, data, resolver);
+    console.log("asdf", requestsToInsert);
     if (requestsToInsert.length)
       await this.updateDoc(copiedFile, requestsToInsert);
 
     // Update values to table rows for repeating
     doc = await this.readDoc(copiedFile);
-    const requeststoUpdateValues = updateTableRowsQuery(doc, data, resolver);
-    if (requeststoUpdateValues.length)
+    const requeststoUpdateValues = await updateTableRowsQuery(
+      doc,
+      data,
+      resolver
+    );
+    if (requeststoUpdateValues.length) {
+      console.log("update123123122121", requeststoUpdateValues);
       await this.updateDoc(copiedFile, requeststoUpdateValues);
+    }
 
     // Compute interpolations
     doc = await this.readDoc(copiedFile);
     const updates = await interpolate(doc, data, formatters, resolver);
-
+    console.log("inter", updates);
     // Update copy with interpolations
     await this.updateDoc(copiedFile, updates);
 

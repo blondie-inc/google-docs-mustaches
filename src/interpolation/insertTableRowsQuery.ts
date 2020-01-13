@@ -1,13 +1,12 @@
 import { GDoc, Request, SPlaceholderInfo } from "./types";
 
-const insertTableRowsQuery = (
+const insertTableRowsQuery = async (
   doc: GDoc,
   data: any,
   resolver?: Function
-): { requests: Request[]; specialPlaceholders: SPlaceholderInfo[] } => {
+): Promise<Request[]> => {
   const specialPlaceholders = findSpecialPlaceholders(doc);
-  const requests = computeRequestForInsertTableRows(specialPlaceholders, data, resolver);
-  return { requests, specialPlaceholders };
+  return computeRequestForInsertTableRows(specialPlaceholders, data, resolver);
 };
 
 const findSpecialPlaceholders = (doc: GDoc): SPlaceholderInfo[] => {
@@ -71,40 +70,53 @@ const findSpecialPlaceholders = (doc: GDoc): SPlaceholderInfo[] => {
   return specialplaceholders;
 };
 
-const computeRequestForInsertTableRows = (
+const computeRequestForInsertTableRows = async (
   SPlaceholders: SPlaceholderInfo[],
   data: any,
   resolver?: Function
-): Request[] => {
-  const requests: Request[] = [];
+): Promise<Request[]> => {
+  let requests: Request[] = [];
 
-  SPlaceholders.reverse().forEach(async (placeholder: SPlaceholderInfo) => {
-    if (placeholder.endRow === -1) return;
+  await Promise.all(
+    SPlaceholders.reverse().map(async (placeholder: SPlaceholderInfo) => {
+      if (placeholder.endRow === -1) return;
+      if (typeof data[placeholder.placeholder] === "function") return; //if it is mustache function, then skip
 
-    let sectionData = data[placeholder.placeholder];
-    if (!sectionData && resolver) {
-      sectionData = await resolver(placeholder.placeholder);
-    }
-
-    if(!sectionData || sectionData.length <= 0) return;
-
-    const itemsLength = sectionData.length;
-
-    //Make requests to insert new empty table rows for repeatation.
-    for (var i = 0; i < itemsLength; i++) {
-      for (var j = 0; j <= placeholder.endRow - placeholder.startRow; j++) {
-        requests.push({
-          insertTableRow: {
-            tableCellLocation: {
-              tableStartLocation: { index: placeholder.tableIndex },
-              rowIndex: placeholder.endRow
-            },
-            insertBelow: true
-          }
-        });
+      let sectionData = data[placeholder.placeholder];
+      if (!sectionData && resolver) {
+        sectionData = await resolver(placeholder.placeholder);
       }
-    }
-  });
+      if (!sectionData || sectionData.length <= 0) return;
+
+      const itemsLength = sectionData.length;
+      const insertRowAmount =
+        itemsLength * (placeholder.endRow - placeholder.startRow + 1);
+      const insertArray = new Array(insertRowAmount).fill({
+        insertTableRow: {
+          tableCellLocation: {
+            tableStartLocation: { index: placeholder.tableIndex },
+            rowIndex: placeholder.endRow
+          },
+          insertBelow: true
+        }
+      });
+      requests = [...requests, ...insertArray];
+      //Make requests to insert new empty table rows for repeatation.
+      // for (var i = 0; i < itemsLength; i++) {
+      //   for (var j = 0; j <= placeholder.endRow - placeholder.startRow; j++) {
+      //     requests.push({
+      //       insertTableRow: {
+      //         tableCellLocation: {
+      //           tableStartLocation: { index: placeholder.tableIndex },
+      //           rowIndex: placeholder.endRow
+      //         },
+      //         insertBelow: true
+      //       }
+      //     });
+      //   }
+      // }
+    })
+  );
 
   return requests;
 };

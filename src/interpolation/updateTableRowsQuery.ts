@@ -1,19 +1,19 @@
 import { GDoc, Request } from "./types";
 
-const updateTableRowsQuery = (
+const updateTableRowsQuery = async (
   doc: GDoc,
   data: any,
   resolver?: Function
-): Request[] => {
+): Promise<Request[]> => {
   const placeholders = getSpecialPlaceholderInfo(doc);
-
-  const requests = computeQueries(placeholders, data, resolver);
+  console.log("pp", placeholders);
+  const requests = await computeQueries(placeholders, data, resolver);
 
   return requests;
 };
 
 const getSpecialPlaceholderInfo = (doc: GDoc): any[] => {
-  const SPlaceholderInfos: any[] = [];
+  const sectionsInfo: any[] = [];
 
   const processContent = (
     content: any[],
@@ -27,11 +27,11 @@ const getSpecialPlaceholderInfo = (doc: GDoc): any[] => {
             const start_matches =
               e.textRun.content.match(/{{#([^}]*)}}/gi) || [];
             start_matches.forEach((m: any) => {
-              const placeholder = m.slice(3, -2);
-              SPlaceholderInfos.push({
+              const sectionName = m.slice(3, -2);
+              sectionsInfo.push({
                 table,
                 startRowIndex: index,
-                placeholder,
+                sectionName,
                 endRowIndex: -1
               });
             });
@@ -39,9 +39,9 @@ const getSpecialPlaceholderInfo = (doc: GDoc): any[] => {
             const end_matches =
               e.textRun.content.match(/{{\/([^}]*)}}/gi) || [];
             end_matches.forEach((m: any) => {
-              const placeholder = m.slice(3, -2);
-              SPlaceholderInfos.forEach(sp => {
-                if (sp.endRowIndex === -1 && sp.placeholder === placeholder) {
+              const sectionName = m.slice(3, -2);
+              sectionsInfo.forEach(sp => {
+                if (sp.endRowIndex === -1 && sp.sectionName === sectionName) {
                   sp.endRowIndex = index;
                 }
               });
@@ -51,8 +51,8 @@ const getSpecialPlaceholderInfo = (doc: GDoc): any[] => {
       }
 
       if (c.table) {
-        c.table.tableRows.map((r: any, index: number) => {
-          r.tableCells.map((cell: any) => {
+        c.table.tableRows.forEach((r: any, index: number) => {
+          r.tableCells.forEach((cell: any) => {
             processContent(cell.content, index, c.table);
           });
         });
@@ -70,57 +70,56 @@ const getSpecialPlaceholderInfo = (doc: GDoc): any[] => {
     processContent(doc.body.content);
   }
 
-  return SPlaceholderInfos;
+  return sectionsInfo;
 };
 
-const computeQueries = (
-  SPlaceholderInfos: any,
+const computeQueries = async (
+  sectionsInfo: any,
   data: any,
   resolver?: Function
-): Request[] => {
+): Promise<Request[]> => {
   const requests: Request[] = [];
   let currentPlaceholder: string = "";
+  let currentResolverValue: any;
   let repeatCounter: number = 0;
-
   //copy cell with same style and changing {{xxx}} => {{items[index].xxx}}
   const processCell = (srcContent: any[], dstContent: any[]) => {
-    srcContent.map((c, index) => {
+    for (const [index, c] of srcContent.entries()) {
       if (c.paragraph) {
         const elements = Object.create(c.paragraph.elements).reverse();
-        elements.map((e: any) => {
+        for (const e of elements) {
           if (e.textRun) {
             let text = e.textRun.content;
             const textStyle = e.textRun.textStyle;
 
             const matches = e.textRun.content.match(/{{([^}]*)}}/gi) || [];
-            matches.forEach(async (m: any) => {
-              const subPlaceHolder = m.slice(2, -2);
-              let renderAble: boolean = false;
-              if (
-                data[currentPlaceholder] &&
-                data[currentPlaceholder][0] &&
-                data[currentPlaceholder][0][subPlaceHolder]
-              ) {
-                renderAble = true;
-              } else if (resolver) {
-                const dataByResolver = await resolver(currentPlaceholder);
+            if (matches && matches.length > 0) {
+              for (const m of matches) {
+                const subPlaceHolder = m.slice(2, -2);
                 if (
-                  dataByResolver &&
-                  dataByResolver[0] &&
-                  dataByResolver[0][subPlaceHolder]
+                  data[currentPlaceholder] &&
+                  data[currentPlaceholder][0] &&
+                  data[currentPlaceholder][0][subPlaceHolder]
                 ) {
-                  renderAble = true;
+                  text = text.replace(
+                    `{{${subPlaceHolder}}}`,
+                    `{{${currentPlaceholder}[${repeatCounter}].${subPlaceHolder}}}`
+                  );
+                } else if (resolver) {
+                  if (
+                    currentResolverValue &&
+                    currentResolverValue[0] &&
+                    currentResolverValue[0][subPlaceHolder]
+                  ) {
+                    text = text.replace(
+                      `{{${subPlaceHolder}}}`,
+                      `{{${currentPlaceholder}.${repeatCounter}.${subPlaceHolder}}}`
+                    );
+                 
+                  }
                 }
               }
-
-              if (renderAble) {
-                text = text.replace(
-                  `{{${subPlaceHolder}}}`,
-                  `{{${currentPlaceholder}.${repeatCounter}.${subPlaceHolder}}}`
-                );
-              }
-            });
-
+            }
             requests.push({
               insertText: {
                 text,
@@ -144,48 +143,51 @@ const computeQueries = (
               }
             });
           }
-        });
+        }
       }
 
       if (c.table) {
-        c.table.tableRows.map((r: any, index1: number) => {
-          r.tableCells.map((c: any) => {
+        for (const [index1, r] of c.table.tableRows) {
+          for (const c of r.tableCells) {
             processCell(
               c.content,
               dstContent[index].table.tableRows[index1].content
             );
-          });
-        });
+          }
+        }
       }
-    });
+    }
   };
 
   const processRow = (srcRow: any, dstRow: any) => {
     const srcCells = Object.create(srcRow.tableCells).reverse();
     const dstCells = Object.create(dstRow.tableCells).reverse();
-    srcCells.forEach((c: any, index: number) => {
+    for (const [index, c] of srcCells.entries()) {
       processCell(c.content, dstCells[index].content);
-    });
+    }
   };
 
-  SPlaceholderInfos.reverse().forEach(async (pInfo: any) => {
+  for (const pInfo of sectionsInfo.reverse()) {
     const {
       table: { tableRows },
       startRowIndex,
       endRowIndex,
-      placeholder
+      sectionName
     } = pInfo;
 
-    if (endRowIndex === -1) return;
+    if (endRowIndex === -1) continue;
+    if (typeof data[sectionName] === "function") continue; // if it is mustache function, then skip
 
-    let sectionData = data[placeholder];
+    let sectionData = data[sectionName];
     if (!sectionData && resolver) {
-      sectionData = await resolver(placeholder);
+      sectionData = await resolver(sectionName);
+      console.log("resolver1", sectionName, sectionData);
     }
 
-    if (!sectionData || sectionData.length <= 0) return;
+    if (!sectionData || sectionData.length <= 0) continue;
 
-    currentPlaceholder = placeholder;
+    currentPlaceholder = sectionName;
+    currentResolverValue = resolver ? await resolver(currentPlaceholder) : "";
 
     const repeatAmount = sectionData.length;
     const srcLength = endRowIndex - startRowIndex + 1;
@@ -199,7 +201,7 @@ const computeQueries = (
       }
     }
 
-    //Delete src rows which contains from {{#...}} to {{/...}}
+    // Delete src rows which contains from {{#...}} to {{/...}}
     for (var k = endRowIndex; k >= startRowIndex; k--) {
       requests.push({
         deleteTableRow: {
@@ -210,8 +212,8 @@ const computeQueries = (
         }
       });
     }
-  });
-
+  }
+  console.log("request123", requests);
   return requests;
 };
 
