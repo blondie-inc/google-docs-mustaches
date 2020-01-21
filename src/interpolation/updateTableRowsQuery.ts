@@ -84,6 +84,8 @@ const computeQueries = async (
   let repeatCounter: number = 0;
   //copy cell with same style and changing {{xxx}} => {{items[index].xxx}}
   const processCell = async (srcContent: any[], dstContent: any[]) => {
+    console.log('[--- updateTableRowsQuery.ts:87 ---]', currentPlaceholder);
+
     for (const [index, c] of srcContent.entries()) {
       if (c.paragraph) {
         const elements = Object.create(c.paragraph.elements).reverse();
@@ -96,6 +98,7 @@ const computeQueries = async (
             if (matches && matches.length > 0) {
               for (const m of matches) {
                 const subPlaceHolder = m.slice(2, -2);
+                console.log('[--- updateTableRowsQuery.ts:99 ---]', subPlaceHolder);
                 if (
                   data[currentPlaceholder] &&
                   data[currentPlaceholder][0] &&
@@ -115,10 +118,13 @@ const computeQueries = async (
                     // currentResolverValue[0][subPlaceHolder]
                       resolvedValue
                   ) {
+                    console.log('[--- updateTableRowsQuery.ts:118 ---]', text);
                     text = text.replace(
                       `{{${subPlaceHolder}}}`,
                       `{{${currentPlaceholder}.${repeatCounter}.${subPlaceHolder}}}`
                     );
+
+                    console.log('[--- updateTableRowsQuery.ts:124 ---]', text);
 
                   }
                 }
@@ -160,14 +166,16 @@ const computeQueries = async (
           }
         }
       }
+
+      return requests;
     }
   };
 
-  const processRow = (srcRow: any, dstRow: any) => {
+  const processRow = async (srcRow: any, dstRow: any) => {
     const srcCells = Object.create(srcRow.tableCells).reverse();
     const dstCells = Object.create(dstRow.tableCells).reverse();
     for (const [index, c] of srcCells.entries()) {
-      processCell(c.content, dstCells[index].content);
+      await processCell(c.content, dstCells[index].content);
     }
   };
 
@@ -197,13 +205,15 @@ const computeQueries = async (
     if (!sectionData) continue;
 
     currentPlaceholder = sectionName;
-    currentResolverValue = resolver ? await resolver(currentPlaceholder) : "";
+    // currentResolverValue = resolver ? await resolver(currentPlaceholder) : "";
+
+    console.log('[--- updateTableRowsQuery.ts:210 ---]', repeatAmount);
 
     const srcLength = endRowIndex - startRowIndex + 1;
     for (var i = repeatAmount; i > 0; i--) {
       repeatCounter = i - 1;
       for (var j = srcLength - 1; j >= 0; j--) {
-        processRow(
+        await processRow(
           tableRows[startRowIndex + j],
           tableRows[startRowIndex + i * srcLength + j]
         );
