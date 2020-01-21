@@ -6,7 +6,7 @@ const updateTableRowsQuery = async (
   resolver?: Function
 ): Promise<Request[]> => {
   const placeholders = getSpecialPlaceholderInfo(doc);
-  console.log("pp", placeholders);
+ 
   const requests = await computeQueries(placeholders, data, resolver);
 
   return requests;
@@ -181,7 +181,6 @@ const computeQueries = async (
     let sectionData = data[sectionName];
     if (!sectionData && resolver) {
       sectionData = await resolver(sectionName);
-      console.log("resolver1", sectionName, sectionData);
     }
 
     if (!sectionData || sectionData.length <= 0) continue;
@@ -213,7 +212,7 @@ const computeQueries = async (
       });
     }
   }
-  console.log("request123", requests);
+  
   return requests;
 };
 

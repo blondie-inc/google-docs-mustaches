@@ -6,7 +6,8 @@ const insertTableRowsQuery = async (
   resolver?: Function
 ): Promise<Request[]> => {
   const specialPlaceholders = findSpecialPlaceholders(doc);
-  return computeRequestForInsertTableRows(specialPlaceholders, data, resolver);
+
+  return computeRequestsToInsertTableRows(specialPlaceholders, data, resolver);
 };
 
 const findSpecialPlaceholders = (doc: GDoc): SPlaceholderInfo[] => {
@@ -23,6 +24,7 @@ const findSpecialPlaceholders = (doc: GDoc): SPlaceholderInfo[] => {
           if (e.textRun) {
             const start_matches =
               e.textRun.content.match(/{{#([^}]*)}}/gi) || [];
+
             start_matches.forEach((m: any) => {
               const placeholder = m.slice(3, -2);
               specialplaceholders.push({
@@ -70,7 +72,7 @@ const findSpecialPlaceholders = (doc: GDoc): SPlaceholderInfo[] => {
   return specialplaceholders;
 };
 
-const computeRequestForInsertTableRows = async (
+const computeRequestsToInsertTableRows = async (
   SPlaceholders: SPlaceholderInfo[],
   data: any,
   resolver?: Function

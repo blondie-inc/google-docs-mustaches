@@ -9,7 +9,6 @@ const interpolate = async (
   formatters: Formatters,
   resolver?: Function
 ): Promise<Request[]> => {
-  console.log("doc123", doc);
   const { placeholders, sections } = scanDoc(doc);
   return computeUpdates(sections, placeholders, data, formatters, resolver);
 };
@@ -89,21 +88,33 @@ const getComputedValue = async (
   return computed || "";
 };
 
+const getComputedValueSync = (
+  placeholder: string,
+  data: any,
+  formatters: Formatters
+): string => {
+  let computed: any;
+
+  computed = dot(data, placeholder, { formatters });
+
+  return computed || "";
+};
+
 const mustachesRender = (
   originText: string,
   data: any,
-  formatters: Formatters,
-  resolver?: Function
+  formatters: Formatters
 ): string => {
   const placeholders = originText.match(/{{([^}#/]*)}}/gi) || [];
 
   return placeholders.reduce((result, placeholder) => {
-    getComputedValue(placeholder.slice(2, -2), data, formatters, resolver).then(
-      computed => {
-        result = result.replace(placeholder, computed);
-      }
+    const computed = getComputedValueSync(
+      placeholder.slice(2, -2),
+      data,
+      formatters
     );
 
+    result = result.replace(placeholder, computed);
     return result;
   }, originText);
 };
@@ -129,10 +140,18 @@ const computeUpdates = async (
             section.indexOf("}}") + 2,
             section.lastIndexOf("{{")
           );
-          const renderedSection = converter(originText, function(text: any) {
-            return mustachesRender(text, data, formatters, resolver);
+          let renderedSection = converter(originText, function(text: any) {
+            return mustachesRender(text, data, formatters);
           });
 
+          if (sectionName === "eval") {
+            try {
+              // eslint-disable-next-line no-eval
+              renderedSection = String(eval(renderedSection));
+            } catch (err) {
+              console.log("eval error", err);
+            }
+          }
           return {
             replaceAllText: {
               replaceText: renderedSection,
@@ -142,9 +161,31 @@ const computeUpdates = async (
               }
             }
           };
+        } else if (sectionName === "eval") {
+          const originText = section.slice(
+            section.indexOf("}}") + 2,
+            section.lastIndexOf("{{")
+          );
+
+          let renderedSection = mustachesRender(originText, data, formatters);
+          try {
+            // eslint-disable-next-line no-eval
+            renderedSection = String(eval(renderedSection));
+            return {
+              replaceAllText: {
+                replaceText: renderedSection,
+                containsText: {
+                  text: srcSection,
+                  matchCase: false
+                }
+              }
+            };
+          } catch (err) {
+            console.log("eval error", err);
+          }
         }
-        
-        return ["", ""];
+
+        return;
       }
     )
   );
