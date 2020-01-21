@@ -6,7 +6,7 @@ const updateTableRowsQuery = async (
   resolver?: Function
 ): Promise<Request[]> => {
   const placeholders = getSpecialPlaceholderInfo(doc);
- 
+
   const requests = await computeQueries(placeholders, data, resolver);
 
   return requests;
@@ -83,7 +83,7 @@ const computeQueries = async (
   let currentResolverValue: any;
   let repeatCounter: number = 0;
   //copy cell with same style and changing {{xxx}} => {{items[index].xxx}}
-  const processCell = (srcContent: any[], dstContent: any[]) => {
+  const processCell = async (srcContent: any[], dstContent: any[]) => {
     for (const [index, c] of srcContent.entries()) {
       if (c.paragraph) {
         const elements = Object.create(c.paragraph.elements).reverse();
@@ -106,16 +106,20 @@ const computeQueries = async (
                     `{{${currentPlaceholder}[${repeatCounter}].${subPlaceHolder}}}`
                   );
                 } else if (resolver) {
+                  const resolvedValue = await resolver(currentPlaceholder);
+                  console.log('[--- updateTableRowsQuery.ts:109 ---]', currentPlaceholder, resolvedValue);
+
                   if (
-                    currentResolverValue &&
-                    currentResolverValue[0] &&
-                    currentResolverValue[0][subPlaceHolder]
+                    // currentResolverValue &&
+                    // currentResolverValue[0] &&
+                    // currentResolverValue[0][subPlaceHolder]
+                      resolvedValue
                   ) {
                     text = text.replace(
                       `{{${subPlaceHolder}}}`,
                       `{{${currentPlaceholder}.${repeatCounter}.${subPlaceHolder}}}`
                     );
-                 
+
                   }
                 }
               }
@@ -149,7 +153,7 @@ const computeQueries = async (
       if (c.table) {
         for (const [index1, r] of c.table.tableRows) {
           for (const c of r.tableCells) {
-            processCell(
+            await processCell(
               c.content,
               dstContent[index].table.tableRows[index1].content
             );
@@ -178,17 +182,23 @@ const computeQueries = async (
     if (endRowIndex === -1) continue;
     if (typeof data[sectionName] === "function") continue; // if it is mustache function, then skip
 
+    let repeatAmount;
     let sectionData = data[sectionName];
-    if (!sectionData && resolver) {
-      sectionData = await resolver(sectionName);
+
+    if (sectionData) {
+      repeatAmount = sectionData.length;
     }
 
-    if (!sectionData || sectionData.length <= 0) continue;
+    if (!sectionData && resolver) {
+      sectionData = await resolver(sectionName);
+      repeatAmount = typeof sectionData.length === "function" ? sectionData.length() : sectionData.length;
+    }
+
+    if (!sectionData) continue;
 
     currentPlaceholder = sectionName;
     currentResolverValue = resolver ? await resolver(currentPlaceholder) : "";
 
-    const repeatAmount = sectionData.length;
     const srcLength = endRowIndex - startRowIndex + 1;
     for (var i = repeatAmount; i > 0; i--) {
       repeatCounter = i - 1;
@@ -212,7 +222,7 @@ const computeQueries = async (
       });
     }
   }
-  
+
   return requests;
 };
 
