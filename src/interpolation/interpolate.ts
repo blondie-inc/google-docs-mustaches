@@ -202,10 +202,14 @@ const computeUpdates = async (
           resolver
         );
 
+        console.log('[--- interpolate.ts:205 ---]', placeholder, computed);
+
         return [placeholder, `${computed}`];
       }
     )
   );
+
+  console.log('[--- interpolate.ts:212 ---]', replacements);
 
   const placeholderUpdates = await Promise.all(
     replacements.map(([placeholder, computed]) => {

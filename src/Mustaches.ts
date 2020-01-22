@@ -51,7 +51,7 @@ class Mustaches {
     if (requestsToInsert.length)
       await this.updateDoc(copiedFile, requestsToInsert);
 
-    // Update mustache values to really values in repeated table rows 
+    // Update mustache values to really values in repeated table rows
     doc = await this.readDoc(copiedFile);
     const requeststoUpdateValues = await updateTableRowsQuery(
       doc,
