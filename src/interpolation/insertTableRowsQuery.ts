@@ -91,7 +91,6 @@ const computeRequestsToInsertTableRows = async (
 
       if (!sectionData && resolver) {
         sectionData = await resolver(placeholder.placeholder);
-        console.log("resolved123", sectionData, placeholder.placeholder)
         if (sectionData)
           itemsLength =
             typeof sectionData.length === "function"
@@ -100,8 +99,6 @@ const computeRequestsToInsertTableRows = async (
       }
 
       if (!sectionData || itemsLength <= 0) return;
-
-      console.log("section123", sectionData, itemsLength);
 
       const insertRowAmount =
         itemsLength * (placeholder.endRow - placeholder.startRow + 1);

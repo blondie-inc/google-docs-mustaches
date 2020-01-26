@@ -23,14 +23,18 @@ export default (
     }
   });
 
-  console.log("path", path)
-  // let prop = path;
-    let prop = iterative.reduce((acc, accessor) => {
-      if (acc[accessor]) return acc[accessor];
+  let unAbleToDeep = false;
+
+  let prop = iterative.reduce((acc, accessor) => {
+    if (acc[accessor]) return acc[accessor];
+    {
+      unAbleToDeep = true;
       return accessor;
-    }, data);
-  
-    console.log("prop", prop)
+    }
+  }, data);
+
+  if(unAbleToDeep) prop = path;
+
   if (options && options.formatters) {
     transformations.map(transformation => {
       const paramParts = transformation.match(/\((.*)\)/gi) || [];
@@ -63,6 +67,6 @@ export default (
       }
     });
   }
-console.log("filtered, prop", prop)
+  
   return prop;
 };

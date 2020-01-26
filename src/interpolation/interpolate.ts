@@ -128,7 +128,7 @@ const computeUpdates = async (
 ): Promise<Request[]> => {
   formatters = { ...availableFormatters, ...formatters };
 
-  const mFunctionUpdates = await Promise.all(
+  let mFunctionUpdates = await Promise.all(
     sections.map(
       async (section): Promise<any> => {
         const srcSection = section;
@@ -207,8 +207,11 @@ const computeUpdates = async (
     )
   );
 
-  const placeholderUpdates = await Promise.all(
+  let placeholderUpdates = await Promise.all(
     replacements.map(([placeholder, computed]) => {
+      if (computed === placeholder) return; //computed = `{{${computed}}}`;
+      if (computed === "NaN") return; //computed = `{{${placeholder}}}`;
+
       return {
         replaceAllText: {
           replaceText: computed,
@@ -220,6 +223,16 @@ const computeUpdates = async (
       };
     })
   );
+
+  placeholderUpdates = placeholderUpdates.filter(request => {
+    if (!request) return false;
+    return true;
+  });
+
+  mFunctionUpdates = mFunctionUpdates.filter(request => {
+    if (!request) return false;
+    return true;
+  });
 
   return [...mFunctionUpdates, ...placeholderUpdates];
 };

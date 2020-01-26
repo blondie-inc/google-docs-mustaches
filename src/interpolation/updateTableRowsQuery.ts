@@ -6,7 +6,6 @@ const updateTableRowsQuery = async (
   resolver?: Function
 ): Promise<Request[]> => {
   const placeholders = getSpecialPlaceholderInfo(doc);
-  console.log("sectiondata123", placeholders);
   const requests = await computeQueries(placeholders, data, resolver);
 
   return requests;
@@ -114,12 +113,7 @@ const computeQueries = async (
                   const resolvedValue = await resolver(
                     `${currentPlaceholder}.${repeatCounter}.${subPlaceHolder}`
                   );
-                  console.log(
-                    "---resolved---",
-                    resolvedValue,
-                    currentPlaceholder,
-                    subPlaceHolder
-                  );
+                  
                   if (resolvedValue) {
                     text = text
                       .replace(`{{${subPlaceHolder}}}`, `${resolvedValue}`)
