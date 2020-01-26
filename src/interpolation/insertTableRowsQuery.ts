@@ -6,7 +6,6 @@ const insertTableRowsQuery = async (
   resolver?: Function
 ): Promise<Request[]> => {
   const specialPlaceholders = findSpecialPlaceholders(doc);
-
   return computeRequestsToInsertTableRows(specialPlaceholders, data, resolver);
 };
 
@@ -81,16 +80,29 @@ const computeRequestsToInsertTableRows = async (
 
   await Promise.all(
     SPlaceholders.reverse().map(async (placeholder: SPlaceholderInfo) => {
-      if (placeholder.endRow === -1) return;
+      if (placeholder.startRow === -1 || placeholder.endRow === -1) return;
       if (typeof data[placeholder.placeholder] === "function") return; //if it is mustache function, then skip
 
+      let itemsLength = 0;
       let sectionData = data[placeholder.placeholder];
+      if (sectionData) {
+        itemsLength = sectionData.length;
+      }
+
       if (!sectionData && resolver) {
         sectionData = await resolver(placeholder.placeholder);
+        console.log("resolved123", sectionData, placeholder.placeholder)
+        if (sectionData)
+          itemsLength =
+            typeof sectionData.length === "function"
+              ? sectionData.length()
+              : sectionData.length;
       }
-      if (!sectionData || sectionData.length <= 0) return;
 
-      const itemsLength = sectionData.length;
+      if (!sectionData || itemsLength <= 0) return;
+
+      console.log("section123", sectionData, itemsLength);
+
       const insertRowAmount =
         itemsLength * (placeholder.endRow - placeholder.startRow + 1);
       const insertArray = new Array(insertRowAmount).fill({

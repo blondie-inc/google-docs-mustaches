@@ -23,11 +23,14 @@ export default (
     }
   });
 
-  let prop = iterative.reduce((acc, accessor) => {
-    if (acc[accessor]) return acc[accessor];
-    return accessor;
-  }, data);
-
+  console.log("path", path)
+  // let prop = path;
+    let prop = iterative.reduce((acc, accessor) => {
+      if (acc[accessor]) return acc[accessor];
+      return accessor;
+    }, data);
+  
+    console.log("prop", prop)
   if (options && options.formatters) {
     transformations.map(transformation => {
       const paramParts = transformation.match(/\((.*)\)/gi) || [];
@@ -60,6 +63,6 @@ export default (
       }
     });
   }
-
+console.log("filtered, prop", prop)
   return prop;
 };

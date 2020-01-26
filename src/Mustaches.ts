@@ -50,8 +50,9 @@ class Mustaches {
     const requestsToInsert = await insertTableRowsQuery(doc, data, resolver);
     if (requestsToInsert.length)
       await this.updateDoc(copiedFile, requestsToInsert);
+    console.log("insert", requestsToInsert);
 
-    // Update mustache values to really values in repeated table rows 
+    // Update mustache values to really values in repeated table rows
     doc = await this.readDoc(copiedFile);
     const requeststoUpdateValues = await updateTableRowsQuery(
       doc,
@@ -61,12 +62,13 @@ class Mustaches {
     if (requeststoUpdateValues.length) {
       await this.updateDoc(copiedFile, requeststoUpdateValues);
     }
-
-    // Compute interpolations
-    doc = await this.readDoc(copiedFile);
-    const updates = await interpolate(doc, data, formatters, resolver);
-    // Update copy with interpolations
-    await this.updateDoc(copiedFile, updates);
+    console.log("update", requeststoUpdateValues);
+    // // Compute interpolations
+    // doc = await this.readDoc(copiedFile);
+    // const updates = await interpolate(doc, data, formatters, resolver);
+    // console.log("last update", updates);
+    // // Update copy with interpolations
+    // await this.updateDoc(copiedFile, updates);
 
     if (exportType) {
       // Export
