@@ -113,13 +113,11 @@ const computeQueries = async (
                   const resolvedValue = await resolver(
                     `${currentPlaceholder}.${repeatCounter}.${subPlaceHolder}`
                   );
-                  
-                  if (resolvedValue) {
-                    text = text
-                      .replace(`{{${subPlaceHolder}}}`, `${resolvedValue}`)
-                      .replace(`{{#${currentPlaceholder}}}`, "")
-                      .replace(`{{/${currentPlaceholder}}}`, "");
-                  }
+
+                  text = text
+                    .replace(`{{${subPlaceHolder}}}`, `${resolvedValue || ""}`)
+                    .replace(`{{#${currentPlaceholder}}}`, "")
+                    .replace(`{{/${currentPlaceholder}}}`, "");
                 }
               }
             }
