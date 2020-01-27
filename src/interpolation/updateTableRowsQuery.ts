@@ -1,19 +1,18 @@
 import { GDoc, Request } from "./types";
 
-const updateTableRowsQuery = (
+const updateTableRowsQuery = async (
   doc: GDoc,
   data: any,
   resolver?: Function
-): Request[] => {
+): Promise<Request[]> => {
   const placeholders = getSpecialPlaceholderInfo(doc);
-
-  const requests = computeQueries(placeholders, data, resolver);
+  const requests = await computeQueries(placeholders, data, resolver);
 
   return requests;
 };
 
 const getSpecialPlaceholderInfo = (doc: GDoc): any[] => {
-  const SPlaceholderInfos: any[] = [];
+  const sectionsInfo: any[] = [];
 
   const processContent = (
     content: any[],
@@ -27,11 +26,11 @@ const getSpecialPlaceholderInfo = (doc: GDoc): any[] => {
             const start_matches =
               e.textRun.content.match(/{{#([^}]*)}}/gi) || [];
             start_matches.forEach((m: any) => {
-              const placeholder = m.slice(3, -2);
-              SPlaceholderInfos.push({
+              const sectionName = m.slice(3, -2);
+              sectionsInfo.push({
                 table,
                 startRowIndex: index,
-                placeholder,
+                sectionName,
                 endRowIndex: -1
               });
             });
@@ -39,9 +38,9 @@ const getSpecialPlaceholderInfo = (doc: GDoc): any[] => {
             const end_matches =
               e.textRun.content.match(/{{\/([^}]*)}}/gi) || [];
             end_matches.forEach((m: any) => {
-              const placeholder = m.slice(3, -2);
-              SPlaceholderInfos.forEach(sp => {
-                if (sp.endRowIndex === -1 && sp.placeholder === placeholder) {
+              const sectionName = m.slice(3, -2);
+              sectionsInfo.forEach(sp => {
+                if (sp.endRowIndex === -1 && sp.sectionName === sectionName) {
                   sp.endRowIndex = index;
                 }
               });
@@ -51,8 +50,8 @@ const getSpecialPlaceholderInfo = (doc: GDoc): any[] => {
       }
 
       if (c.table) {
-        c.table.tableRows.map((r: any, index: number) => {
-          r.tableCells.map((cell: any) => {
+        c.table.tableRows.forEach((r: any, index: number) => {
+          r.tableCells.forEach((cell: any) => {
             processContent(cell.content, index, c.table);
           });
         });
@@ -70,136 +69,160 @@ const getSpecialPlaceholderInfo = (doc: GDoc): any[] => {
     processContent(doc.body.content);
   }
 
-  return SPlaceholderInfos;
+  return sectionsInfo;
 };
 
-const computeQueries = (
-  SPlaceholderInfos: any,
+const computeQueries = async (
+  sectionsInfo: any,
   data: any,
   resolver?: Function
-): Request[] => {
+): Promise<Request[]> => {
   const requests: Request[] = [];
   let currentPlaceholder: string = "";
+  let currentResolverValue: any;
   let repeatCounter: number = 0;
-
   //copy cell with same style and changing {{xxx}} => {{items[index].xxx}}
-  const processCell = (srcContent: any[], dstContent: any[]) => {
-    srcContent.map((c, index) => {
+  const processCell = async (srcContent: any[], dstContent: any[]) => {
+    srcContent = Object.create(srcContent).reverse();
+
+    for (const [index, c] of srcContent.entries()) {
       if (c.paragraph) {
         const elements = Object.create(c.paragraph.elements).reverse();
-        elements.map((e: any) => {
+        for (const e of elements) {
           if (e.textRun) {
             let text = e.textRun.content;
             const textStyle = e.textRun.textStyle;
 
-            const matches = e.textRun.content.match(/{{([^}]*)}}/gi) || [];
-            matches.forEach(async (m: any) => {
-              const subPlaceHolder = m.slice(2, -2);
-              let renderAble: boolean = false;
-              if (
-                data[currentPlaceholder] &&
-                data[currentPlaceholder][0] &&
-                data[currentPlaceholder][0][subPlaceHolder]
-              ) {
-                renderAble = true;
-              } else if (resolver) {
-                const dataByResolver = await resolver(currentPlaceholder);
+            const matches = e.textRun.content.match(/{{([^}#/]*)}}/gi) || [];
+            if (matches && matches.length > 0) {
+              for (const m of matches) {
+                const subPlaceHolder = m.slice(2, -2);
                 if (
-                  dataByResolver &&
-                  dataByResolver[0] &&
-                  dataByResolver[0][subPlaceHolder]
+                  data[currentPlaceholder] &&
+                  data[currentPlaceholder][0] &&
+                  data[currentPlaceholder][0][subPlaceHolder]
                 ) {
-                  renderAble = true;
+                  text = text
+                    .replace(
+                      `{{${subPlaceHolder}}}`,
+                      `{{${currentPlaceholder}[${repeatCounter}].${subPlaceHolder}}}`
+                    )
+                    .replace(`{{#${currentPlaceholder}}}`, "")
+                    .replace(`{{/${currentPlaceholder}}}`, "");
+                } else if (resolver) {
+                  const resolvedValue = await resolver(
+                    `${currentPlaceholder}.${repeatCounter}.${subPlaceHolder}`
+                  );
+
+                  if (resolvedValue)
+                    text = text.replace(
+                      `{{${subPlaceHolder}}}`,
+                      `${resolvedValue}`
+                    );
+
+                  text = text
+                    .replace(`{{#${currentPlaceholder}}}`, "")
+                    .replace(`{{/${currentPlaceholder}}}`, "");
                 }
               }
+            }
 
-              if (renderAble) {
-                text = text.replace(
-                  `{{${subPlaceHolder}}}`,
-                  `{{${currentPlaceholder}.${repeatCounter}.${subPlaceHolder}}}`
-                );
-              }
-            });
+            text = text.replace(`{{/${currentPlaceholder}}}`, "");
 
-            requests.push({
-              insertText: {
-                text,
-                location: {
-                  index: dstContent[index].paragraph.elements[0].startIndex
+            if (index === 0) text = text.replace("\n", "");
+
+            if (text !== "" && text !== "\n") {
+              requests.push({
+                insertText: {
+                  text,
+                  location: {
+                    index: dstContent[0].paragraph.elements[0].startIndex
+                  }
                 }
-              }
-            });
+              });
 
-            requests.push({
-              updateTextStyle: {
-                textStyle,
-                range: {
-                  startIndex:
-                    dstContent[index].paragraph.elements[0].startIndex,
-                  endIndex:
-                    dstContent[index].paragraph.elements[0].startIndex +
-                    text.length
-                },
-                fields: "*"
-              }
-            });
+              requests.push({
+                updateTextStyle: {
+                  textStyle,
+                  range: {
+                    startIndex: dstContent[0].paragraph.elements[0].startIndex,
+                    endIndex:
+                      dstContent[0].paragraph.elements[0].startIndex +
+                      text.length
+                  },
+                  fields: "*"
+                }
+              });
+            }
           }
-        });
+        }
       }
 
       if (c.table) {
-        c.table.tableRows.map((r: any, index1: number) => {
-          r.tableCells.map((c: any) => {
-            processCell(
+        for (const [index1, r] of c.table.tableRows) {
+          for (const c of r.tableCells) {
+            await processCell(
               c.content,
               dstContent[index].table.tableRows[index1].content
             );
-          });
-        });
+          }
+        }
       }
-    });
+    }
   };
 
-  const processRow = (srcRow: any, dstRow: any) => {
+  const processRow = async (srcRow: any, dstRow: any) => {
     const srcCells = Object.create(srcRow.tableCells).reverse();
     const dstCells = Object.create(dstRow.tableCells).reverse();
-    srcCells.forEach((c: any, index: number) => {
-      processCell(c.content, dstCells[index].content);
-    });
+    for (const [index, c] of srcCells.entries()) {
+      await processCell(c.content, dstCells[index].content);
+    }
   };
 
-  SPlaceholderInfos.reverse().forEach(async (pInfo: any) => {
+  sectionsInfo = Object.create(sectionsInfo).reverse();
+  for (const pInfo of sectionsInfo) {
     const {
       table: { tableRows },
       startRowIndex,
       endRowIndex,
-      placeholder
+      sectionName
     } = pInfo;
 
-    if (endRowIndex === -1) return;
+    if (startRowIndex === -1 || endRowIndex === -1) continue;
+    if (typeof data[sectionName] === "function") continue; // if it is mustache function, then skip
 
-    let sectionData = data[placeholder];
-    if (!sectionData && resolver) {
-      sectionData = await resolver(placeholder);
+    let repeatAmount = 0;
+    let sectionData = data[sectionName];
+
+    if (sectionData) {
+      repeatAmount = sectionData.length;
     }
 
-    if (!sectionData || sectionData.length <= 0) return;
+    if (!sectionData && resolver) {
+      sectionData = await resolver(sectionName);
+      if (sectionData)
+        repeatAmount =
+          typeof sectionData.length === "function"
+            ? sectionData.length()
+            : sectionData.length;
+    }
 
-    currentPlaceholder = placeholder;
+    if (!sectionData || repeatAmount <= 0) continue;
 
-    const repeatAmount = sectionData.length;
+    currentPlaceholder = sectionName;
+
     const srcLength = endRowIndex - startRowIndex + 1;
     for (var i = repeatAmount; i > 0; i--) {
       repeatCounter = i - 1;
       for (var j = srcLength - 1; j >= 0; j--) {
-        processRow(
+        await processRow(
           tableRows[startRowIndex + j],
           tableRows[startRowIndex + i * srcLength + j]
         );
       }
     }
 
-    //Delete src rows which contains from {{#...}} to {{/...}}
+    // Delete src rows which contains from {{#...}} to {{/...}}
     for (var k = endRowIndex; k >= startRowIndex; k--) {
       requests.push({
         deleteTableRow: {
@@ -210,7 +233,7 @@ const computeQueries = (
         }
       });
     }
-  });
+  }
 
   return requests;
 };

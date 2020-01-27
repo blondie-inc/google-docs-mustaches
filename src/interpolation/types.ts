@@ -43,6 +43,7 @@ export interface Request {
   insertText?: InsertTextRequest;
   updateTextStyle?: UpdateTextStyleRequest;
   deleteTableRow?: DeleteTableRowRequest;
+  deleteContentRange? : DeleteContentRangeRequest;
 }
 
 export interface ReplaceAllTextRequest {
@@ -97,4 +98,8 @@ export interface Range {
 
 export interface DeleteTableRowRequest {
   tableCellLocation: TableCellLocation;
+}
+
+export interface DeleteContentRangeRequest {
+  range: Range
 }

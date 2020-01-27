@@ -12,7 +12,6 @@ import {
 } from "./interpolation";
 import { GDoc, Request } from "./interpolation/types";
 import apis, { multipart } from "./apis";
-import Blob from "./polyfills/Blob";
 
 class Mustaches {
   apis: any;
@@ -48,26 +47,25 @@ class Mustaches {
 
     // Insert table rows for repeating
     let doc = await this.readDoc(copiedFile);
-    const { requests: requestsToInsert } = insertTableRowsQuery(
+    const requestsToInsert = await insertTableRowsQuery(doc, data, resolver);
+    if (requestsToInsert.length)
+      await this.updateDoc(copiedFile, requestsToInsert);
+
+    // Update mustache values to really values in repeated table rows
+    doc = await this.readDoc(copiedFile);
+    const requeststoUpdateValues = await updateTableRowsQuery(
       doc,
       data,
       resolver
     );
-    if (requestsToInsert.length)
-      await this.updateDoc(copiedFile, requestsToInsert);
-
-    // Update values to table rows for repeating
-    doc = await this.readDoc(copiedFile);
-    const requeststoUpdateValues = updateTableRowsQuery(doc, data, resolver);
-    if (requeststoUpdateValues.length)
+    if (requeststoUpdateValues.length) {
       await this.updateDoc(copiedFile, requeststoUpdateValues);
-
+    }
     // Compute interpolations
     doc = await this.readDoc(copiedFile);
     const updates = await interpolate(doc, data, formatters, resolver);
-
     // Update copy with interpolations
-    await this.updateDoc(copiedFile, updates);
+    if (updates.length) await this.updateDoc(copiedFile, updates);
 
     if (exportType) {
       // Export

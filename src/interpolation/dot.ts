@@ -1,30 +1,72 @@
-import { Formatters } from '../types'
+const letters =
+  "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ1234567890";
 
-export default (data: any, interpolation: string, options?: { formatters: Formatters }): any => {
-  const [path, ...transformations] = interpolation.split('|').map(s => s.trim())
+export default (
+  data: any,
+  interpolation: string,
+  options?: { formatters: any }
+): any => {
+  const [path, ...transformations] = interpolation
+    .split("|")
+    .map(s => s.trim());
 
-  const iterative: string[] = []
-  path.split('.').map(subPath => {
-    const selector = subPath.match(/\[.*\]/)
+  const iterative: string[] = [];
+
+  path.split(".").map(subPath => {
+    const selector = subPath.match(/\[.*\]/);
     if (selector) {
-      subPath = subPath.replace(selector[0], '')
-      iterative.push(subPath)
-      iterative.push(selector[0].slice(1, -1))
+      subPath = subPath.replace(selector[0], "");
+      iterative.push(subPath);
+      iterative.push(selector[0].slice(1, -1));
     } else {
-      iterative.push(subPath)
+      iterative.push(subPath);
     }
-  })
+  });
 
-  let prop = iterative.reduce((acc, accessor) => acc[accessor], data)
+  let unAbleToDeep = false;
+
+  let prop = iterative.reduce((acc, accessor) => {
+    if (acc[accessor]) return acc[accessor];
+    {
+      unAbleToDeep = true;
+      return accessor;
+    }
+  }, data);
+
+  if(unAbleToDeep) prop = path;
 
   if (options && options.formatters) {
     transformations.map(transformation => {
-      const formatter = options.formatters[transformation.toLowerCase()]
-      if (formatter) {
-        prop = formatter(prop)
-      }
-    })
-  }
+      const paramParts = transformation.match(/\((.*)\)/gi) || [];
 
-  return prop
-}
+      if (!paramParts.length) {
+        const formatter = options.formatters[transformation.toLowerCase()];
+        if (formatter) {
+          prop = formatter(prop);
+        }
+      } else {
+        const filterName = transformation.slice(0, transformation.indexOf("("));
+        const filterFunc = options.formatters[filterName];
+
+        if (filterFunc) {
+          let params = transformation
+            .slice(transformation.indexOf("(") + 1, -1)
+            .split(",")
+            .map(s => {
+              s = s.trim();
+              if (s && letters.includes(s[0])) return s;
+              return s.slice(1, -1);
+            });
+
+          params = params.map(param => {
+            if (data[param]) return data[param];
+            return param;
+          });
+          prop = filterFunc(prop, ...params);
+        }
+      }
+    });
+  }
+  
+  return prop;
+};
