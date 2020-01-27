@@ -114,8 +114,13 @@ const computeQueries = async (
                     `${currentPlaceholder}.${repeatCounter}.${subPlaceHolder}`
                   );
 
+                  if (resolvedValue)
+                    text = text.replace(
+                      `{{${subPlaceHolder}}}`,
+                      `${resolvedValue}`
+                    );
+
                   text = text
-                    .replace(`{{${subPlaceHolder}}}`, `${resolvedValue}`)
                     .replace(`{{#${currentPlaceholder}}}`, "")
                     .replace(`{{/${currentPlaceholder}}}`, "");
                 }
@@ -123,8 +128,8 @@ const computeQueries = async (
             }
 
             text = text.replace(`{{/${currentPlaceholder}}}`, "");
-            if(index === 0)
-            text = text.replace("\n", "");
+
+            if (index === 0) text = text.replace("\n", "");
 
             if (text !== "" && text !== "\n") {
               requests.push({
@@ -173,7 +178,6 @@ const computeQueries = async (
       await processCell(c.content, dstCells[index].content);
     }
   };
-
 
   sectionsInfo = Object.create(sectionsInfo).reverse();
   for (const pInfo of sectionsInfo) {

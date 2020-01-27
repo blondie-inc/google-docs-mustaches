@@ -65,7 +65,7 @@ class Mustaches {
     doc = await this.readDoc(copiedFile);
     const updates = await interpolate(doc, data, formatters, resolver);
     // Update copy with interpolations
-    await this.updateDoc(copiedFile, updates);
+    if (updates.length) await this.updateDoc(copiedFile, updates);
 
     if (exportType) {
       // Export

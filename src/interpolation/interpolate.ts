@@ -183,6 +183,16 @@ const computeUpdates = async (
           } catch (err) {
             console.log("eval error", err);
           }
+        } else {
+          return {
+            replaceAllText: {
+              replaceText: "",
+              containsText: {
+                text: srcSection,
+                matchCase: false
+              }
+            }
+          };
         }
 
         return;
@@ -210,7 +220,7 @@ const computeUpdates = async (
   let placeholderUpdates = await Promise.all(
     replacements.map(([placeholder, computed]) => {
       if (computed === placeholder) computed = "";
-      if (computed === "NaN") computed = "";
+      if (computed == "NaN") computed = "";
 
       return {
         replaceAllText: {
