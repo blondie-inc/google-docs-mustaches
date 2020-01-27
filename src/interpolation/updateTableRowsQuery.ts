@@ -115,7 +115,7 @@ const computeQueries = async (
                   );
 
                   text = text
-                    .replace(`{{${subPlaceHolder}}}`, `${resolvedValue || ""}`)
+                    .replace(`{{${subPlaceHolder}}}`, `${resolvedValue}`)
                     .replace(`{{#${currentPlaceholder}}}`, "")
                     .replace(`{{/${currentPlaceholder}}}`, "");
                 }

@@ -209,8 +209,8 @@ const computeUpdates = async (
 
   let placeholderUpdates = await Promise.all(
     replacements.map(([placeholder, computed]) => {
-      if (computed === placeholder) return; //computed = `{{${computed}}}`;
-      if (computed === "NaN") return; //computed = `{{${placeholder}}}`;
+      if (computed === placeholder) computed = "";
+      if (computed === "NaN") computed = "";
 
       return {
         replaceAllText: {
